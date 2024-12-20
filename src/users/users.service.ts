@@ -1,15 +1,13 @@
-import { Injectable } from "@nestjs/common";
-
-export type User = {
-	id: number;
-	name: string;
-	email: string;
-	role: "ADMIN" | "ENGINEER" | "INTERN";
-};
+import {
+	BadRequestException,
+	Injectable,
+	NotFoundException,
+} from "@nestjs/common";
+import type { CreateUserDto } from "./dto/create-user.dto";
 
 @Injectable()
 export class UsersService {
-	private users: User[] = [
+	private users = [
 		{
 			id: 1,
 			name: "Leanne Graham",
@@ -42,17 +40,31 @@ export class UsersService {
 		},
 	];
 
-	findAll(role?: User["role"]) {
-		if (role) return this.users.filter((user) => user.role === role);
+	findAll(role?: CreateUserDto["role"]) {
+		if (role) {
+			if (
+				role !== "ADMIN" &&
+				role !== "ENGINEER" &&
+				role !== "INTERN"
+			)
+				throw new BadRequestException("Invalid role");
+			const users = this.users.filter((user) => user.role === role);
+			if (!users.length)
+				throw new NotFoundException("Users not found");
+
+			return users;
+		}
 
 		return this.users;
 	}
 
 	findOne(id: number) {
-		return this.users.find((user) => user.id === id);
+		const user = this.users.find((user) => user.id === id);
+		if (!user) throw new NotFoundException("Users not found");
+		return user;
 	}
 
-	create(user: User) {
+	create(user: CreateUserDto) {
 		const usersByHighestId = this.users.sort((a, b) => b.id - a.id);
 
 		const newUser = {
@@ -65,10 +77,10 @@ export class UsersService {
 		return newUser;
 	}
 
-	update(id: number, user: User) {
+	update(id: number, user: CreateUserDto) {
 		const index = this.users.findIndex((user) => user.id === id);
 
-		if (index === -1) return "User not found";
+		if (index === -1) throw new NotFoundException("User not found");
 
 		this.users[index] = {
 			...this.users[index],
@@ -83,7 +95,7 @@ export class UsersService {
 	delete(id: number) {
 		const index = this.users.findIndex((user) => user.id === id);
 
-		if (index === -1) return "User not found";
+		if (index === -1) throw new NotFoundException("User not found");
 
 		const deletedUser = this.users[index];
 
